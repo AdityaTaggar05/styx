@@ -10,6 +10,12 @@ import (
 	styxErrors "github.com/AdityaTaggar05/styx/internal/errors"
 )
 
+// These are set at build time via -ldflags. Use empty strings for development.
+var (
+	ClientID     string
+	ClientSecret string
+)
+
 // GDrive implements store.DataStore for Google Drive.
 type GDrive struct {
 	clientID     string
@@ -20,13 +26,24 @@ type GDrive struct {
 }
 
 // New creates a GDrive backend from a config map.
+// Uses bundled credentials when config values are empty.
 func New(cfg map[string]string) (*GDrive, error) {
 	clientID := cfg["client_id"]
 	clientSecret := cfg["client_secret"]
 	tokenFile := cfg["token_file"]
 
+	if clientID == "" {
+		clientID = ClientID
+	}
+	if clientSecret == "" {
+		clientSecret = ClientSecret
+	}
+	if tokenFile == "" {
+		tokenFile = "~/.styx/gdrive-token.enc"
+	}
+
 	if clientID == "" || clientSecret == "" {
-		return nil, fmt.Errorf("%w: gdrive requires client_id and client_secret", styxErrors.ErrConfigValidate)
+		return nil, fmt.Errorf("%w: gdrive requires client_id and client_secret (build with -ldflags)", styxErrors.ErrConfigValidate)
 	}
 
 	return &GDrive{
