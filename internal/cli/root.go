@@ -11,8 +11,8 @@ var (
 	verbose    bool
 )
 
-// NewRootCommand builds the entire styx CLI tree.
-func NewRootCommand() *cobra.Command {
+// RootCommand builds the entire styx CLI tree.
+func RootCommand() *cobra.Command {
 	root := &cobra.Command{
 		Use:   "styx",
 		Short: "Filesystem sync tool for cloud data stores",
@@ -25,87 +25,36 @@ Configure backends, register directories, and let the daemon keep everything in 
 	root.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable debug logging")
 
 	root.AddCommand(
-		newInitCmd(),
-		newRemoveCmd(),
-		newListCmd(),
-		newAuthCmd(),
-		newDaemonCmd(),
-		newSyncCmd(),
-		newStatusCmd(),
-		newLogCmd(),
+		setupCmd(),
+		initCmd(),
+		removeCmd(),
+		listCmd(),
+		authCmd(),
+		daemonCmd(),
+		syncCmd(),
+		statusCmd(),
+		logCmd(),
 	)
 
 	return root
 }
 
-func newInitCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "init",
-		Short: "Register the current directory for syncing",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return notYet("init")
-		},
-	}
-}
-
-func newRemoveCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "remove <path>",
-		Short: "Remove a directory from the registry",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return notYet("remove")
-		},
-	}
-}
-
-func newListCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "list",
-		Short: "List all registered directories",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return notYet("list")
-		},
-	}
-}
-
-func newAuthCmd() *cobra.Command {
+func authCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "auth",
 		Short: "Manage authentication with data stores",
 	}
 
-	var storeName string
-	cmd.PersistentFlags().StringVarP(&storeName, "store", "s", "gdrive", "Store backend name")
-
 	cmd.AddCommand(
-		&cobra.Command{
-			Use:   "login",
-			Short: "Authenticate with a data store",
-			RunE: func(cmd *cobra.Command, args []string) error {
-				return notYet("auth login")
-			},
-		},
-		&cobra.Command{
-			Use:   "logout",
-			Short: "Revoke authentication",
-			RunE: func(cmd *cobra.Command, args []string) error {
-				return notYet("auth logout")
-			},
-		},
-		&cobra.Command{
-			Use:   "status",
-			Short: "Check authentication status",
-			RunE: func(cmd *cobra.Command, args []string) error {
-				return notYet("auth status")
-			},
-		},
+		authLoginCmd(),
+		authLogoutCmd(),
+		authStatusCmd(),
 	)
 
 	return cmd
 }
 
-func newDaemonCmd() *cobra.Command {
+func daemonCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "daemon",
 		Short: "Manage the styxd background sync daemon",
@@ -152,7 +101,7 @@ func newDaemonCmd() *cobra.Command {
 	return cmd
 }
 
-func newSyncCmd() *cobra.Command {
+func syncCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "sync [path]",
 		Short: "Force an immediate sync of the given directory (or all)",
@@ -162,7 +111,7 @@ func newSyncCmd() *cobra.Command {
 	}
 }
 
-func newStatusCmd() *cobra.Command {
+func statusCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status [path]",
 		Short: "Show sync status of a directory",
@@ -172,7 +121,7 @@ func newStatusCmd() *cobra.Command {
 	}
 }
 
-func newLogCmd() *cobra.Command {
+func logCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "log",
 		Short: "View daemon logs",
