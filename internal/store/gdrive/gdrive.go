@@ -6,6 +6,7 @@ import (
 
 	"golang.org/x/oauth2"
 
+	"github.com/AdityaTaggar05/styx/internal/config"
 	"github.com/AdityaTaggar05/styx/internal/store"
 	styxErrors "github.com/AdityaTaggar05/styx/internal/errors"
 )
@@ -46,10 +47,15 @@ func New(cfg map[string]string) (*GDrive, error) {
 		return nil, fmt.Errorf("%w: gdrive requires client_id and client_secret (build with -ldflags)", styxErrors.ErrConfigValidate)
 	}
 
+	tokenPath, err := config.ExpandPath(tokenFile)
+	if err != nil {
+		return nil, fmt.Errorf("%w: expanding token path: %v", styxErrors.ErrConfigValidate, err)
+	}
+
 	return &GDrive{
 		clientID:     clientID,
 		clientSecret: clientSecret,
-		tokenPath:    tokenFile,
+		tokenPath:    tokenPath,
 	}, nil
 }
 

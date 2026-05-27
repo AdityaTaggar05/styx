@@ -51,6 +51,6 @@ type DataStore interface {
 	List(ctx context.Context, remotePath string) ([]FileMeta, error)
 	ListRecursive(ctx context.Context, remotePath string) ([]FileMeta, error)
 
-	// Incremental change detection — cursor is an opaque token from the last call.
+	// Incremental change detection. cursor is an opaque token from the last call.
 	ChangesSince(ctx context.Context, cursor string) ([]Change, string, error)
 }
