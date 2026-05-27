@@ -271,7 +271,7 @@ func (g *GDrive) Push(ctx context.Context, localPath, remotePath string) (*store
 	// Check if file already exists — update instead of creating a dup
 	existingID, err := g.resolveFileID(ctx, remotePath)
 	if err == nil && existingID != "" && existingID != "root" {
-		updated, err := svc.Files.Update(existingID, driveFile).Media(f).Fields("id, md5Checksum, size, modifiedTime").Do()
+		updated, err := svc.Files.Update(existingID, &drive.File{Name: base}).Media(f).Fields("id, md5Checksum, size, modifiedTime").Do()
 		if err != nil {
 			return nil, fmt.Errorf("%w: %v", styxErrors.ErrStoreUnavailable, err)
 		}
