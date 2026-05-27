@@ -60,15 +60,6 @@ func (g *GDrive) IsAuthenticated(ctx context.Context) (bool, error) {
 	}
 
 	g.tokenSrc = g.oauthConfig().TokenSource(ctx, tok)
-	refreshed, err := g.tokenSrc.Token()
-	if err != nil {
-		return false, nil
-	}
-
-	if refreshed.AccessToken != tok.AccessToken {
-		g.saveToken(refreshed)
-	}
-
 	return true, nil
 }
 
