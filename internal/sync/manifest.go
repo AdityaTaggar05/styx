@@ -13,11 +13,14 @@ import (
 )
 
 // ManifestEntry tracks a single synced file in the manifest.
+// Hash is the local SHA-256 at time of sync.
+// RemoteHash is the remote checksum (sha256 or md5) at time of sync.
 type ManifestEntry struct {
-	Hash     string    `json:"hash"`
-	Size     int64     `json:"size"`
-	ModTime  time.Time `json:"mod_time"`
-	RemoteID string    `json:"remote_id"`
+	Hash       string    `json:"hash"`
+	RemoteHash string    `json:"remote_hash"`
+	Size       int64     `json:"size"`
+	ModTime    time.Time `json:"mod_time"`
+	RemoteID   string    `json:"remote_id"`
 }
 
 // Manifest is the per-directory sync state file.
@@ -244,7 +247,7 @@ func Diff(dir string, local []FileInfo, manifest *Manifest, remote []store.FileM
 		// [TRACKED FILES]
 		case localExists && inManifest && remoteExists:
 			localChanged := localHash != maniEntry.Hash
-			remoteChanged := remoteFile.Hash != maniEntry.Hash
+			remoteChanged := remoteFile.Hash != maniEntry.RemoteHash
 
 			switch {
 			case !localChanged && !remoteChanged:
