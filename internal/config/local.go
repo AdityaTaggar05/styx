@@ -26,7 +26,7 @@ func DefaultLocalConfig(store, remoteRoot string) *LocalConfig {
 		Store:          store,
 		RemoteRoot:     remoteRoot,
 		ConflictSuffix: ".conflict",
-		Ignore:         []string{},
+		Ignore:         []string{"*.conflict"},
 	}
 }
 
