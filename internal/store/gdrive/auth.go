@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -103,6 +104,11 @@ func (g *GDrive) loadToken() (*oauth2.Token, error) {
 
 // saveToken encrypts and writes the token to disk.
 func (g *GDrive) saveToken(tok *oauth2.Token) error {
+	tokenDir := filepath.Dir(g.tokenPath)
+	if _, err := os.Stat(tokenDir); os.IsNotExist(err) {
+		return fmt.Errorf("%w: %s does not exist. Run `styx setup` first", styxErrors.ErrFileNotFound, tokenDir)
+	}
+
 	plain, err := json.Marshal(tok)
 	if err != nil {
 		return err
