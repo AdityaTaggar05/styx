@@ -2,6 +2,7 @@ package gdrive
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -350,6 +351,9 @@ func (g *GDrive) List(ctx context.Context, remotePath string) ([]store.FileMeta,
 
 	parentID, err := g.resolveFileID(ctx, remotePath)
 	if err != nil {
+		if errors.Is(err, styxErrors.ErrStoreNotFound) {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -364,6 +368,9 @@ func (g *GDrive) ListRecursive(ctx context.Context, remotePath string) ([]store.
 
 	parentID, err := g.resolveFileID(ctx, remotePath)
 	if err != nil {
+		if errors.Is(err, styxErrors.ErrStoreNotFound) {
+			return nil, nil
+		}
 		return nil, err
 	}
 
