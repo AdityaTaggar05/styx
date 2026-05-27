@@ -2,6 +2,8 @@ package cli
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -14,12 +16,27 @@ func removeCmd() *cobra.Command {
 		Short: "Remove a directory from the registry",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			path := args[0]
+			if path == "." {
+				cwd, err := os.Getwd()
+				if err != nil {
+					return fmt.Errorf("getting current directory: %w", err)
+				}
+				path = cwd
+			} else if !filepath.IsAbs(path) {
+				abs, err := filepath.Abs(path)
+				if err != nil {
+					return fmt.Errorf("resolving path %s: %w", path, err)
+				}
+				path = abs
+			}
+
 			cfg, err := config.LoadGlobalConfig(configPath)
 			if err != nil {
 				return err
 			}
 
-			if err := config.RemoveDirectory(cfg, args[0]); err != nil {
+			if err := config.RemoveDirectory(cfg, path); err != nil {
 				return err
 			}
 
@@ -27,7 +44,7 @@ func removeCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Removed %s from registry.\n", args[0])
+			fmt.Printf("Removed %s from registry.\n", path)
 			return nil
 		},
 	}
