@@ -44,6 +44,12 @@ func removeCmd() *cobra.Command {
 				return err
 			}
 
+			// Clean up the .styx directory
+			styxDir := filepath.Join(path, config.StyxDirName)
+			if err := os.RemoveAll(styxDir); err != nil {
+				return fmt.Errorf("removing .styx from %s: %w", path, err)
+			}
+
 			fmt.Printf("Removed %s from registry.\n", path)
 			return nil
 		},
