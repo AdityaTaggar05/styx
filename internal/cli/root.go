@@ -101,26 +101,6 @@ func daemonCmd() *cobra.Command {
 	return cmd
 }
 
-func syncCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "sync [path]",
-		Short: "Force an immediate sync of the given directory (or all)",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return notYet("sync")
-		},
-	}
-}
-
-func statusCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "status [path]",
-		Short: "Show sync status of a directory",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return notYet("status")
-		},
-	}
-}
-
 func logCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "log",
