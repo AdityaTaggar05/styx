@@ -1,2 +1,9 @@
 AGENTS.md
 .commandcode
+
+# Build artifacts
+/styx
+/styxd
+
+# Local credentials (never committed)
+build.env
