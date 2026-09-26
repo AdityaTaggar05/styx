@@ -2,14 +2,26 @@ package cli
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/spf13/cobra"
+
+	styxLog "github.com/AdityaTaggar05/styx/internal/log"
 )
 
 var (
 	configPath string
 	verbose    bool
 )
+
+// cliLogger builds a stderr text logger, honoring the --verbose flag.
+func cliLogger() *slog.Logger {
+	level := slog.LevelInfo
+	if verbose {
+		level = slog.LevelDebug
+	}
+	return styxLog.SetupCLI(level)
+}
 
 // RootCommand builds the entire styx CLI tree.
 func RootCommand() *cobra.Command {

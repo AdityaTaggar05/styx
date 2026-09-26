@@ -3,6 +3,7 @@ package sync
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,7 +14,7 @@ import (
 )
 
 // Sync runs a full sync cycle on a single registered directory.
-func Sync(ctx context.Context, rootDir string, cfg *config.LocalConfig, st store.DataStore) error {
+func Sync(ctx context.Context, rootDir string, cfg *config.LocalConfig, st store.DataStore, logger *slog.Logger) error {
 	manifestPath := filepath.Join(rootDir, ".styx", "manifest.json")
 
 	// Load or create manifest
@@ -85,7 +86,7 @@ func Sync(ctx context.Context, rootDir string, cfg *config.LocalConfig, st store
 				entry.ModTime = info.ModTime()
 			}
 			manifest.Files[a.Path] = entry
-			fmt.Printf("  pulled → %s\n", a.Path)
+			logger.Info("pulled", "path", a.Path)
 
 		case ActionPushNew, ActionPushUpdate:
 			meta, err := st.Push(ctx, localPath, rPath)
@@ -99,7 +100,7 @@ func Sync(ctx context.Context, rootDir string, cfg *config.LocalConfig, st store
 				ModTime:    meta.ModTime,
 				RemoteID:   meta.RemoteID,
 			}
-			fmt.Printf("  pushed → %s\n", a.Path)
+			logger.Info("pushed", "path", a.Path)
 
 		case ActionConflict:
 			conflictPath, err := SaveConflict(localPath, cfg.ConflictSuffix)
@@ -122,18 +123,18 @@ func Sync(ctx context.Context, rootDir string, cfg *config.LocalConfig, st store
 			}
 			entry.Hash = localHash
 			manifest.Files[a.Path] = entry
-			fmt.Printf("  conflict → %s (local saved to %s)\n", a.Path, conflictPath)
+			logger.Info("conflict", "path", a.Path, "local_saved_to", conflictPath)
 
 		case ActionDeleteLocal:
 			if err := os.Remove(localPath); err != nil && !os.IsNotExist(err) {
 				return fmt.Errorf("deleting %s: %w", a.Path, err)
 			}
 			delete(manifest.Files, a.Path)
-			fmt.Printf("  deleted → %s\n", a.Path)
+			logger.Info("deleted", "path", a.Path)
 
 		case ActionForgetManifest:
 			delete(manifest.Files, a.Path)
-			fmt.Printf("  cleaned → %s\n", a.Path)
+			logger.Info("cleaned", "path", a.Path)
 		}
 	}
 
@@ -142,6 +143,6 @@ func Sync(ctx context.Context, rootDir string, cfg *config.LocalConfig, st store
 		return fmt.Errorf("saving manifest: %w", err)
 	}
 
-	fmt.Printf("Sync complete. %d file(s) processed.\n", len(actions))
+	logger.Info("sync complete", "actions", len(actions))
 	return nil
 }

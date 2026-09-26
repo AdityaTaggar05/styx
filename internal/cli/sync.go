@@ -55,7 +55,7 @@ func syncCmd() *cobra.Command {
 				}
 
 				fmt.Printf("Syncing %s → %s:%s\n", dir, localCfg.Store, localCfg.RemoteRoot)
-				if err := sync.Sync(context.Background(), dir, localCfg, st); err != nil {
+				if err := sync.Sync(context.Background(), dir, localCfg, st, cliLogger()); err != nil {
 					fmt.Printf("sync failed for %s: %v\n", dir, err)
 				}
 			}
