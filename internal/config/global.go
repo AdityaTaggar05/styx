@@ -28,10 +28,11 @@ type StoreConfig struct {
 
 // DaemonConfig controls daemon runtime behavior.
 type DaemonConfig struct {
-	LogLevel   string `toml:"log_level,omitempty"`
-	LogFile    string `toml:"log_file,omitempty"`
-	DebounceMS int    `toml:"debounce_ms,omitempty"`
-	PIDFile    string `toml:"pid_file,omitempty"`
+	LogLevel       string `toml:"log_level,omitempty"`
+	LogFile        string `toml:"log_file,omitempty"`
+	DebounceMS     int    `toml:"debounce_ms,omitempty"`
+	PollIntervalMS int    `toml:"poll_interval_ms,omitempty"`
+	PIDFile        string `toml:"pid_file,omitempty"`
 }
 
 // DefaultGlobalConfig returns a GlobalConfig with sensible defaults.
@@ -41,10 +42,11 @@ func DefaultGlobalConfig() *GlobalConfig {
 		Stores:      make(map[string]StoreConfig),
 		Directories: []string{},
 		Daemon: DaemonConfig{
-			LogLevel:   "info",
-			LogFile:    "~/.styx/styxd.log",
-			DebounceMS: 10000,
-			PIDFile:    "~/.styx/styxd.pid",
+			LogLevel:       "info",
+			LogFile:        "~/.styx/styxd.log",
+			DebounceMS:     10000,
+			PollIntervalMS: 300000,
+			PIDFile:        "~/.styx/styxd.pid",
 		},
 	}
 }
@@ -111,6 +113,9 @@ func SaveGlobalConfig(path string, cfg *GlobalConfig) error {
 func Validate(cfg *GlobalConfig) error {
 	if cfg.Daemon.DebounceMS <= 0 {
 		return fmt.Errorf("%w: debounce_ms must be positive", styxErrors.ErrConfigValidate)
+	}
+	if cfg.Daemon.PollIntervalMS <= 0 {
+		return fmt.Errorf("%w: poll_interval_ms must be positive", styxErrors.ErrConfigValidate)
 	}
 	if !validLogLevels[cfg.Daemon.LogLevel] {
 		return fmt.Errorf("%w: invalid log_level %q (must be debug, info, warn, error)", styxErrors.ErrConfigValidate, cfg.Daemon.LogLevel)
