@@ -11,7 +11,7 @@ Both `cmd/styx` and `cmd/styxd` compile.
 
 ---
 
-## Files Implemented (29 total)
+## Files Implemented (30 total)
 
 ### Phase 1 — Foundation (complete)
 
@@ -64,6 +64,16 @@ Both `cmd/styx` and `cmd/styxd` compile.
 | `internal/cli/daemon.go` | `daemon start/stop/status/install/uninstall`; locates `styxd` next to `styx` |
 | `internal/cli/log.go` | `styx log [--follow]` with partial-line buffering |
 | `cmd/styxd/main.go` | Daemon entry: `--config`, `SetupDaemon`, signal context, `Daemon.Run` |
+
+### Phase 5 — S3 Backend (complete)
+
+| File | Purpose |
+|------|---------|
+| `internal/store/s3/s3.go` | S3 struct, `New()`, `init()` registration, full CRUD via AWS SDK v2; configurable endpoint (path-style); `md5:<ETag>` hashes |
+
+Also refactored:
+- `internal/config/global.go` — `Stores` is now `map[string]map[string]string` (generic per-backend settings).
+- `internal/cli/auth.go`, `internal/cli/sync.go`, `internal/daemon/daemon.go` — pass the config map directly; `auth login` skips the browser for key-based stores (empty `AuthURL`).
 
 ---
 
@@ -202,6 +212,17 @@ Each directory owns a `Debouncer`: a single `time.Timer` that is reset on every 
 
 `daemon.Install` writes `~/.config/systemd/user/styxd.service` (`Type=simple`, `Restart=on-failure`, absolute `ExecStart`) then runs `systemctl --user daemon-reload` and `enable --now`. `Uninstall` disables, removes the file, and reloads. Honors `XDG_CONFIG_HOME`.
 
+### Phase 5 — S3 Backend
+
+`S3` implements `DataStore` with AWS SDK v2. `getClient` builds the client lazily: region defaults to `us-east-1`; explicit `access_key_id`/`secret_access_key` use a static credentials provider, otherwise the default AWS chain; a custom `endpoint` enables path-style addressing (MinIO/R2/B2).
+
+- **Path mapping**: `objectKey` strips the leading `/` (`/styx/projects/a.txt` → `styx/projects/a.txt`); `prefixFor` appends `/` for listings.
+- **CRUD**: `Push` = single `PutObject`; `Pull` = `GetObject`; `Delete` = `DeleteObject` (idempotent); `Hash` = `HeadObject` ETag.
+- **Listing**: `ListRecursive` paginates `ListObjectsV2` over the prefix and skips zero-byte `dir/` markers; `List` uses delimiter `/` for one level.
+- **Hashes**: `md5:<ETag>` — the ETag of a single-part upload is the object MD5, so it fits the dual-hash manifest unchanged.
+- **Auth**: `AuthURL()` is empty; `auth login` detects this and calls `Authenticate` (a `HeadBucket` check) directly; `Logout` is a no-op.
+- **Changes**: `ChangesSince` returns nothing — S3 has no change feed, so the periodic full sync covers remote changes.
+
 ---
 
 ## Dependencies
@@ -213,15 +234,21 @@ Each directory owns a `Debouncer`: a single `time.Timer` that is reset on every 
 | `github.com/fsnotify/fsnotify` | v1.10.1 | Recursive filesystem watching (daemon) |
 | `golang.org/x/oauth2` | v0.36.0 | OAuth2 client |
 | `google.golang.org/api/drive/v3` | v0.281.0 | GDrive API (full CRUD, listing, changes) |
+| `github.com/aws/aws-sdk-go-v2` | v1.47.8 | AWS SDK core |
+| `github.com/aws/aws-sdk-go-v2/config` | v1.33.17 | AWS config + credential chain |
+| `github.com/aws/aws-sdk-go-v2/credentials` | v1.20.17 | Static credentials provider |
+| `github.com/aws/aws-sdk-go-v2/service/s3` | v1.114.9 | S3 client |
+| `github.com/aws/smithy-go` | v1.28.8 | API error inspection |
 
 ---
 
 ## Next
 
-All four phases are complete: foundation, CLI + auth, sync engine, daemon.
+All five phases are complete: foundation, CLI + auth, sync engine, daemon, S3 backend.
 
 Possible follow-ups:
-- **Tests** — the repo has none yet; unit tests for `sync.Diff`, `Matcher`, `Debouncer`, and `pid` would be the highest value.
-- **Incremental remote polling** — wire `DataStore.ChangesSince` + the manifest `remote_cursor` to replace the periodic full sync.
+- **Tests** — the repo still has none; unit tests for `sync.Diff`, `Matcher`, `Debouncer`, `pid`, and S3 path mapping are the highest value.
+- **S3 setup UX** — `setup`/`init` don't scaffold `[stores.s3]`; users hand-edit the config.
+- **Incremental remote polling** — wire gdrive's `ChangesSince` + the manifest `remote_cursor` to replace the periodic full sync (S3 has no change feed).
 - **More backends** — Dropbox/OneDrive via the `store.Register` factory.
 - **Config hot-reload** — the daemon reads config once at startup; a reload would avoid restarts.

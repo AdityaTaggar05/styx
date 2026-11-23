@@ -2,7 +2,7 @@
 
 ## Overview
 
-Styx syncs local directories to cloud data stores (GDrive first, extensible to Dropbox/OneDrive). Two binaries: the `styx` CLI and the `styxd` systemd daemon.
+Styx syncs local directories to cloud data stores (Google Drive and S3 first, extensible to Dropbox/OneDrive). Two binaries: the `styx` CLI and the `styxd` systemd daemon.
 
 ---
 
@@ -23,6 +23,11 @@ Styx syncs local directories to cloud data stores (GDrive first, extensible to D
 | File watching | fsnotify, recursive by walking + adding on create | fsnotify has no native recursion |
 | Backend registry | Factory pattern: `store.Register()` in `init()` | Adding a backend = one package, no changes to core code |
 | Conflict file handling | `*.conflict` auto-added to default ignore list | Users can remove from config to track conflicts remotely |
+| Store config | Free-form `map[string]string` per backend | Each backend defines its own keys without touching core config |
+| S3 library | AWS SDK v2 with configurable endpoint | Works with AWS S3 and S3-compatible services (MinIO/R2/B2) |
+| S3 auth | Access keys in config, else AWS credential chain | S3 has no OAuth browser flow |
+| S3 remote hash | `md5:<ETag>` | A single-part `PutObject` ETag is the object's MD5 |
+| S3 change detection | None — periodic full sync | S3 exposes no change feed |
 
 ---
 
@@ -31,8 +36,8 @@ Styx syncs local directories to cloud data stores (GDrive first, extensible to D
 ```
 styx/
 ├── cmd/
-│   ├── styx/main.go          # CLI entry point + gdrive side-effect import
-│   └── styxd/main.go         # Daemon entry point + gdrive side-effect import
+│   ├── styx/main.go          # CLI entry point + gdrive/s3 side-effect imports
+│   └── styxd/main.go         # Daemon entry point + gdrive/s3 side-effect imports
 ├── internal/
 │   ├── cli/                  # Cobra command tree
 │   │   ├── root.go           # RootCommand(), persistent flags, subcommand wiring
@@ -55,10 +60,12 @@ styx/
 │   ├── store/                # Data store abstraction
 │   │   ├── store.go          # DataStore interface + FileMeta, Change types
 │   │   ├── registry.go       # Register/Get/List — factory pattern
-│   │   └── gdrive/           # Google Drive implementation
-│   │       ├── gdrive.go     # GDrive struct, New(), init() registration, full CRUD
-│   │       ├── auth.go       # OAuth2: AuthURL, Authenticate, IsAuthenticated (auto-refresh), Logout
-│   │       └── crypto.go     # AES-256-GCM token encryption (key from /etc/machine-id)
+│   │   ├── gdrive/           # Google Drive implementation
+│   │   │   ├── gdrive.go     # GDrive struct, New(), init() registration, full CRUD
+│   │   │   ├── auth.go       # OAuth2: AuthURL, Authenticate, IsAuthenticated (auto-refresh), Logout
+│   │   │   └── crypto.go     # AES-256-GCM token encryption (key from /etc/machine-id)
+│   │   └── s3/               # Amazon S3 / S3-compatible implementation
+│   │       └── s3.go         # S3 struct, New(), init() registration, full CRUD
 │   ├── sync/                 # Sync engine (Phase 3 — complete)
 │   │   ├── hasher.go         # SHA-256 streaming file hasher
 │   │   ├── matcher.go        # .gitignore-style ignore pattern matcher
@@ -89,6 +96,18 @@ directories = [
     "/home/alice/projects",
 ]
 
+# Each backend gets a free-form table and reads the keys it needs.
+[stores.gdrive]
+token_file = "~/.styx/gdrive-token.enc"   # client_id/client_secret optional (bundled otherwise)
+
+[stores.s3]
+bucket = "my-styx-bucket"
+region = "us-east-1"
+# endpoint = "http://localhost:9000"      # set for MinIO / R2 / B2 (uses path-style addressing)
+# access_key_id = "..."                   # optional; otherwise the AWS credential chain
+# secret_access_key = "..."
+# session_token = "..."
+
 [daemon]
 log_level = "info"
 log_file = "~/.styx/styxd.log"
@@ -97,7 +116,9 @@ poll_interval_ms = 300000
 pid_file = "~/.styx/styxd.pid"
 ```
 
-The `[stores.gdrive]` section is optional — if missing, bundled credentials are used. It can be populated to override the bundled client ID/secret or set a custom `token_file` path.
+`stores` is a `map[string]map[string]string` — each backend reads whatever keys it needs.
+- `gdrive`: the section is optional; bundled credentials are used when `client_id`/`client_secret` are empty.
+- `s3`: `bucket` is required. Credentials come from `access_key_id`/`secret_access_key` when set, otherwise the standard AWS credential chain (env, `~/.aws`, IAM role).
 
 ### `<dir>/.styx/config.toml` — Per-Directory Config
 
@@ -181,7 +202,16 @@ func init() {
 }
 ```
 
-Adding Dropbox: create `internal/store/dropbox/`, implement `DataStore`, call `store.Register("dropbox", ...)` in `init()`.
+Adding a backend: create `internal/store/<name>/`, implement `DataStore`, call `store.Register("<name>", ...)` in `init()`, then add the side-effect import to both `cmd/styx` and `cmd/styxd`.
+
+### S3 backend
+
+- **Mapping**: the bucket is a store-level setting (`[stores.s3].bucket`); each directory's `remote_root` is the object-key prefix. Remote path `/styx/projects/a.txt` → key `styx/projects/a.txt`.
+- **No folders**: `Push` is a single `PutObject`; `ListRecursive` is `ListObjectsV2` over the prefix; `List` uses delimiter `/` for one level. Zero-byte `dir/` marker objects are skipped.
+- **Hashes**: remote hash is `md5:<ETag>` (single-part upload). The dual-hash manifest is unchanged.
+- **Auth**: `AuthURL()` is empty; `auth login` detects this and just validates the bucket (`HeadBucket`) instead of running the browser flow. `Logout` is a no-op.
+- **Changes**: `ChangesSince` returns nothing — S3 has no change feed, so the daemon's periodic full sync handles remote changes.
+- **Endpoint**: set `endpoint` for S3-compatible services; the client switches to path-style addressing.
 
 ---
 
@@ -255,10 +285,10 @@ Both binaries need the same ldflags since both reference gdrive.
 | Command | Status | Description |
 |---------|--------|-------------|
 | `styx setup` | Done | Bootstrap config and `~/.styx/` directory |
-| `styx auth login --store <name>` | Done | OAuth2 browser flow |
+| `styx auth login --store <name>` | Done | OAuth2 browser flow (gdrive) or bucket check (s3) |
 | `styx auth logout --store <name>` | Done | Delete token |
 | `styx auth status --store <name>` | Done | Check if authenticated |
-| `styx init [--store gdrive] [--root <path>]` | Done | Register directory, prompt for remote path |
+| `styx init [--store <name>] [--root <path>]` | Done | Register directory, prompt for remote path |
 | `styx remove <path>` | Done | Unregister directory (supports `.`) |
 | `styx list` | Done | Show all registered directories |
 | `styx sync [path]` | Done | Force immediate sync of directory (or all) |
