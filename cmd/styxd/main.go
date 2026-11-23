@@ -13,6 +13,7 @@ import (
 	"github.com/AdityaTaggar05/styx/internal/daemon"
 	styxLog "github.com/AdityaTaggar05/styx/internal/log"
 	_ "github.com/AdityaTaggar05/styx/internal/store/gdrive"
+	_ "github.com/AdityaTaggar05/styx/internal/store/s3"
 )
 
 func main() {
