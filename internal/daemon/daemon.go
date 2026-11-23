@@ -74,7 +74,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 			continue
 		}
 
-		st, err := store.Get(localCfg.Store, storeConfigToMap(d.cfg.Stores[localCfg.Store]))
+		st, err := store.Get(localCfg.Store, d.cfg.Stores[localCfg.Store])
 		if err != nil {
 			d.logger.Warn("skipping directory", "dir", root, "error", err)
 			continue
@@ -147,14 +147,5 @@ func (d *Daemon) Run(ctx context.Context) error {
 				w.debouncer.Trigger()
 			}
 		}
-	}
-}
-
-// storeConfigToMap flattens a StoreConfig into the map the store registry expects.
-func storeConfigToMap(cfg config.StoreConfig) map[string]string {
-	return map[string]string{
-		"client_id":     cfg.ClientID,
-		"client_secret": cfg.ClientSecret,
-		"token_file":    cfg.TokenFile,
 	}
 }

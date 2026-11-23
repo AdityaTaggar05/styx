@@ -12,18 +12,13 @@ import (
 )
 
 // GlobalConfig is the top-level configuration stored at ~/.styx/config.toml.
+// Stores maps a backend name to its own free-form settings, so each backend
+// defines the keys it needs without changing this type.
 type GlobalConfig struct {
-	Version     int                    `toml:"version"`
-	Stores      map[string]StoreConfig `toml:"stores"`
-	Directories []string               `toml:"directories"`
-	Daemon      DaemonConfig           `toml:"daemon"`
-}
-
-// StoreConfig holds OAuth credentials and token path for a single backend.
-type StoreConfig struct {
-	ClientID     string `toml:"client_id"`
-	ClientSecret string `toml:"client_secret"`
-	TokenFile    string `toml:"token_file,omitempty"`
+	Version     int                          `toml:"version"`
+	Stores      map[string]map[string]string `toml:"stores"`
+	Directories []string                     `toml:"directories"`
+	Daemon      DaemonConfig                 `toml:"daemon"`
 }
 
 // DaemonConfig controls daemon runtime behavior.
@@ -39,7 +34,7 @@ type DaemonConfig struct {
 func DefaultGlobalConfig() *GlobalConfig {
 	return &GlobalConfig{
 		Version:     1,
-		Stores:      make(map[string]StoreConfig),
+		Stores:      make(map[string]map[string]string),
 		Directories: []string{},
 		Daemon: DaemonConfig{
 			LogLevel:       "info",
@@ -75,7 +70,7 @@ func LoadGlobalConfig(path string) (*GlobalConfig, error) {
 	}
 
 	if cfg.Stores == nil {
-		cfg.Stores = make(map[string]StoreConfig)
+		cfg.Stores = make(map[string]map[string]string)
 	}
 	if err := Validate(cfg); err != nil {
 		return nil, err

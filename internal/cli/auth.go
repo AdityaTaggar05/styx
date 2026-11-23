@@ -27,8 +27,7 @@ func authLoginCmd() *cobra.Command {
 				return err
 			}
 
-			storeCfg, _ := cfg.Stores[storeName]
-			s, err := store.Get(storeName, storeConfigToMap(storeCfg))
+			s, err := store.Get(storeName, cfg.Stores[storeName])
 			if err != nil {
 				return err
 			}
@@ -71,8 +70,8 @@ func authLoginCmd() *cobra.Command {
 				fmt.Printf("Authenticated with %s successfully.\n", storeName)
 				// Save token path to config so it persists
 				if _, ok := cfg.Stores[storeName]; !ok {
-					cfg.Stores[storeName] = config.StoreConfig{
-						TokenFile: fmt.Sprintf("~/.styx/%s-token.enc", storeName),
+					cfg.Stores[storeName] = map[string]string{
+						"token_file": fmt.Sprintf("~/.styx/%s-token.enc", storeName),
 					}
 					config.SaveGlobalConfig(configPath, cfg)
 				}
@@ -101,8 +100,7 @@ func authLogoutCmd() *cobra.Command {
 				return err
 			}
 
-			storeCfg := cfg.Stores[storeName]
-			s, err := store.Get(storeName, storeConfigToMap(storeCfg))
+			s, err := store.Get(storeName, cfg.Stores[storeName])
 			if err != nil {
 				return err
 			}
@@ -132,8 +130,7 @@ func authStatusCmd() *cobra.Command {
 				return err
 			}
 
-			storeCfg := cfg.Stores[storeName]
-			s, err := store.Get(storeName, storeConfigToMap(storeCfg))
+			s, err := store.Get(storeName, cfg.Stores[storeName])
 			if err != nil {
 				return err
 			}
@@ -154,15 +151,6 @@ func authStatusCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&storeName, "store", "s", "gdrive", "Store backend name")
 	return cmd
-}
-
-// storeConfigToMap flattens a StoreConfig into a map for the store constructor.
-func storeConfigToMap(cfg config.StoreConfig) map[string]string {
-	return map[string]string{
-		"client_id":     cfg.ClientID,
-		"client_secret": cfg.ClientSecret,
-		"token_file":    cfg.TokenFile,
-	}
 }
 
 func openBrowser(url string) {

@@ -1,11 +1,11 @@
 package cli
 
 import (
-	"slices"
 	"context"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/spf13/cobra"
 
@@ -41,8 +41,7 @@ func syncCmd() *cobra.Command {
 					continue
 				}
 
-				storeCfg := cfg.Stores[localCfg.Store]
-				st, err := store.Get(localCfg.Store, storeConfigToMap(storeCfg))
+				st, err := store.Get(localCfg.Store, cfg.Stores[localCfg.Store])
 				if err != nil {
 					fmt.Printf("skipping %s: %v\n", dir, err)
 					continue
@@ -92,8 +91,7 @@ func statusCmd() *cobra.Command {
 					continue
 				}
 
-				storeCfg := cfg.Stores[localCfg.Store]
-				st, err := store.Get(localCfg.Store, storeConfigToMap(storeCfg))
+				st, err := store.Get(localCfg.Store, cfg.Stores[localCfg.Store])
 				if err != nil {
 					fmt.Printf("skipping %s: %v\n", dir, err)
 					continue
