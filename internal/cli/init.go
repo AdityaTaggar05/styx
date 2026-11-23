@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -38,7 +39,11 @@ func initCmd() *cobra.Command {
 
 			if remoteRoot == "" {
 				fmt.Print("Remote path on ", storeName, ": ")
-				fmt.Scanln(&remoteRoot)
+				line, err := bufio.NewReader(os.Stdin).ReadString('\n')
+				if err != nil && line == "" {
+					return fmt.Errorf("%w: reading remote path: %v", styxErrors.ErrFileIO, err)
+				}
+				remoteRoot = line
 			}
 			remoteRoot = strings.TrimSpace(remoteRoot)
 			if remoteRoot == "" {
