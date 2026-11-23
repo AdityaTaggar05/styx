@@ -33,6 +33,16 @@ func authLoginCmd() *cobra.Command {
 			}
 
 			authURL := s.AuthURL()
+
+			// Key-based stores (e.g. S3) have no browser flow; validate directly.
+			if authURL == "" {
+				if err := s.Authenticate(context.Background(), ""); err != nil {
+					return err
+				}
+				fmt.Printf("Authenticated with %s.\n", storeName)
+				return nil
+			}
+
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
