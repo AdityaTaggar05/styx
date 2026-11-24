@@ -178,7 +178,7 @@ func ScanLocal(dir string, matcher *Matcher) ([]FileInfo, error) {
 // differ from the manifest entry.
 //
 // dir is the absolute path to the local directory root.
-func Diff(dir string, local []FileInfo, manifest *Manifest, remote []store.FileMeta) ([]Action, error) {
+func Diff(dir string, local []FileInfo, manifest *Manifest, remote []store.FileMeta, ignore *Matcher) ([]Action, error) {
 	// Build lookup maps
 	localMap := make(map[string]*FileInfo, len(local))
 	for i := range local {
@@ -186,10 +186,14 @@ func Diff(dir string, local []FileInfo, manifest *Manifest, remote []store.FileM
 	}
 
 	// Only files take part in sync: remote directories are recreated on demand
-	// when pushing files, and Styx's own .styx/ state is never synced.
+	// when pushing files, Styx's own .styx/ state is never synced, and ignored
+	// paths are left alone on both sides.
 	remoteMap := make(map[string]*store.FileMeta, len(remote))
 	for i := range remote {
 		if remote[i].IsDir || isInternalPath(remote[i].Path) {
+			continue
+		}
+		if ignore != nil && ignore.Match(remote[i].Path, false) {
 			continue
 		}
 		remoteMap[remote[i].Path] = &remote[i]

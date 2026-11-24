@@ -135,7 +135,7 @@ func statusCmd() *cobra.Command {
 					manifest = sync.NewManifest(localCfg.Store, localCfg.RemoteRoot)
 				}
 
-				actions, err := sync.Diff(dir, localFiles, manifest, remoteFiles)
+				actions, err := sync.Diff(dir, localFiles, manifest, remoteFiles, matcher)
 				if err != nil {
 					fmt.Printf("  diff error: %v\n", err)
 					continue

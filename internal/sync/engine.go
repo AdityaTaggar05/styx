@@ -47,7 +47,7 @@ func Sync(ctx context.Context, rootDir string, cfg *config.LocalConfig, st store
 	}
 
 	// Compute diff
-	actions, err := Diff(rootDir, localFiles, manifest, normalizedRemote)
+	actions, err := Diff(rootDir, localFiles, manifest, normalizedRemote, matcher)
 	if err != nil {
 		return fmt.Errorf("computing diff: %w", err)
 	}
