@@ -141,34 +141,62 @@ func statusCmd() *cobra.Command {
 					continue
 				}
 
-				var pushNew, pushUpdate, pullNew, pullUpdate, conflict, delLocal, clean int
+				var pushNew, pushUpdate, pullNew, pullUpdate, restore, conflicts, delLocal, clean []string
 				for _, a := range actions {
 					switch a.Type {
 					case sync.ActionPushNew:
-						pushNew++
+						pushNew = append(pushNew, a.Path)
 					case sync.ActionPushUpdate:
-						pushUpdate++
+						pushUpdate = append(pushUpdate, a.Path)
 					case sync.ActionPullNew:
-						pullNew++
+						pullNew = append(pullNew, a.Path)
 					case sync.ActionPullUpdate:
-						pullUpdate++
+						pullUpdate = append(pullUpdate, a.Path)
+					case sync.ActionRestoreLocal:
+						restore = append(restore, a.Path)
 					case sync.ActionConflict:
-						conflict++
+						conflicts = append(conflicts, a.Path)
 					case sync.ActionDeleteLocal:
-						delLocal++
+						delLocal = append(delLocal, a.Path)
 					case sync.ActionForgetManifest:
-						clean++
+						clean = append(clean, a.Path)
 					}
 				}
 
-				fmt.Printf("  to push:    %d new, %d updated\n", pushNew, pushUpdate)
-				fmt.Printf("  to pull:    %d new, %d updated\n", pullNew, pullUpdate)
-				fmt.Printf("  conflicts:  %d\n", conflict)
-				fmt.Printf("  deletions:  %d local, %d tracked\n", delLocal, clean)
+				fmt.Printf("  to push:    %d new, %d updated\n", len(pushNew), len(pushUpdate))
+				printStatusPaths(pushNew, "+")
+				printStatusPaths(pushUpdate, "~")
+
+				if len(restore) > 0 {
+					fmt.Printf("  to pull:    %d new, %d updated, %d restore\n", len(pullNew), len(pullUpdate), len(restore))
+				} else {
+					fmt.Printf("  to pull:    %d new, %d updated\n", len(pullNew), len(pullUpdate))
+				}
+				printStatusPaths(pullNew, "+")
+				printStatusPaths(pullUpdate, "~")
+				printStatusPaths(restore, "r")
+
+				fmt.Printf("  conflicts:  %d\n", len(conflicts))
+				printStatusPaths(conflicts, "!")
+
+				fmt.Printf("  deletions:  %d local, %d tracked\n", len(delLocal), len(clean))
+				printStatusPaths(delLocal, "-")
+				printStatusPaths(clean, ".")
 			}
 
 			return nil
 		},
+	}
+}
+
+// printStatusPaths prints paths sorted, one per line, prefixed by marker.
+func printStatusPaths(paths []string, marker string) {
+	if len(paths) == 0 {
+		return
+	}
+	slices.Sort(paths)
+	for _, p := range paths {
+		fmt.Printf("    %s %s\n", marker, p)
 	}
 }
 
