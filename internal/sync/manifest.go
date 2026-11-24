@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	styxErrors "github.com/AdityaTaggar05/styx/internal/errors"
@@ -184,8 +185,13 @@ func Diff(dir string, local []FileInfo, manifest *Manifest, remote []store.FileM
 		localMap[local[i].Path] = &local[i]
 	}
 
+	// Only files take part in sync: remote directories are recreated on demand
+	// when pushing files, and Styx's own .styx/ state is never synced.
 	remoteMap := make(map[string]*store.FileMeta, len(remote))
 	for i := range remote {
+		if remote[i].IsDir || isInternalPath(remote[i].Path) {
+			continue
+		}
 		remoteMap[remote[i].Path] = &remote[i]
 	}
 
@@ -303,4 +309,10 @@ func Diff(dir string, local []FileInfo, manifest *Manifest, remote []store.FileM
 	})
 
 	return actions, nil
+}
+
+// isInternalPath reports whether a remote path is Styx's own state (.styx/...).
+func isInternalPath(p string) bool {
+	p = strings.TrimPrefix(p, "/")
+	return p == ".styx" || strings.HasPrefix(p, ".styx/")
 }
